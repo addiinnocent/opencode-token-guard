@@ -69,6 +69,20 @@ Or from a local build, drop a shim into your plugin directory:
 export { TokenGuard, TokenGuard as default } from '<abs-path>/opencode-token-guard/dist/index.js'
 ```
 
+## The `/token-guard` command
+
+The plugin ships a matching opencode command at
+[`command/token-guard.md`](command/token-guard.md). Run as `/token-guard` in a
+session, it reports the all-time firing counts (metrics JSON first, log scrape
+as fallback) plus an explicitly labelled savings estimate.
+
+Install it alongside the plugin:
+
+```bash
+mkdir -p ~/.config/opencode/command
+cp command/token-guard.md ~/.config/opencode/command/
+```
+
 ## Configuration
 
 All thresholds via environment variables:
