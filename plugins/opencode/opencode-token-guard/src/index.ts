@@ -1,7 +1,9 @@
 import type { Plugin } from '@opencode-ai/plugin'
 import { Guard, classifyBash, optionsFromEnv } from './guard.js'
+import { bumpMetrics, type FiringKind } from './metrics.js'
 
 export * from './guard.js'
+export * from './metrics.js'
 
 interface ToolInput {
   tool: string
@@ -34,7 +36,8 @@ const TokenGuard: Plugin = async ({ client }) => {
   const guard = new Guard(optionsFromEnv())
   const seenMessages = new Set<string>()
 
-  const notify = async (message: string) => {
+  const notify = async (kind: FiringKind, message: string) => {
+    await bumpMetrics(kind)
     await client.app.log({ body: { service: 'token-guard', level: 'warn', message } }).catch(() => {})
   }
 
@@ -42,7 +45,10 @@ const TokenGuard: Plugin = async ({ client }) => {
     'tool.execute.before': async (input: ToolInput, output: { args: ToolArgs }) => {
       if (input.tool === 'bash' && typeof output.args.command === 'string') {
         const decision = guard.onBashBefore(output.args.command)
-        if (!decision.allow) throw new Error(decision.reason)
+        if (!decision.allow) {
+          await bumpMetrics('blockedBashStreaks')
+          throw new Error(decision.reason)
+        }
       }
       if (input.tool === 'edit' || input.tool === 'write') guard.onEdit()
     },
@@ -51,7 +57,7 @@ const TokenGuard: Plugin = async ({ client }) => {
       if (input.tool === 'bash' && typeof input.args?.command === 'string') {
         if (classifyBash(input.args.command) === 'verify') {
           const nudge = guard.onVerifyAfter(input.args.command)
-          if (nudge) await notify(nudge)
+          if (nudge) await notify('verifyChurn', nudge)
         }
       }
     },
@@ -64,14 +70,14 @@ const TokenGuard: Plugin = async ({ client }) => {
       seenMessages.add(info.id)
 
       const stepNudge = guard.onAssistantStep()
-      if (stepNudge) await notify(stepNudge)
+      if (stepNudge) await notify('stepBudget', stepNudge)
 
       const ctx =
         (info.tokens?.input ?? 0) +
         (info.tokens?.cacheRead ?? 0) +
         (info.tokens?.cacheWrite ?? 0)
       const ctxNudge = guard.onContextSize(ctx)
-      if (ctxNudge) await notify(ctxNudge)
+      if (ctxNudge) await notify('contextBudget', ctxNudge)
     },
   }
 }

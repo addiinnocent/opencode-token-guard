@@ -31,6 +31,29 @@ and context size.
 Warnings are written to the opencode log (`client.app.log`, service
 `token-guard`). Blocks surface as tool errors the model sees and can react to.
 
+## Metrics
+
+Every firing is also counted into a small JSON file,
+`~/.local/share/opencode/token-guard-metrics.json` (override with
+`TOKEN_GUARD_METRICS_PATH`):
+
+```json
+{
+  "stepBudget": 48,
+  "contextBudget": 0,
+  "verifyChurn": 8,
+  "blockedBashStreaks": 0,
+  "total": 56,
+  "sessions": 48,
+  "firstFiring": "2026-08-28T10:54:30.526Z",
+  "lastFiring": "2026-09-28T12:51:47.028Z"
+}
+```
+
+The file counts firings per kind plus distinct firing sessions; it does not
+meter savings. A matching `/token-guard` opencode command that reports these
+numbers lives in [`command/token-guard.md`](command/token-guard.md).
+
 ## Install
 
 From npm (once published), add to `opencode.json`:
@@ -56,6 +79,7 @@ All thresholds via environment variables:
 | `TOKEN_GUARD_MIN_EDITS_PER_VERIFY` | `3` | edits expected between verification runs |
 | `TOKEN_GUARD_STEP_BUDGET` | `200` | assistant steps before the session-length nudge |
 | `TOKEN_GUARD_CONTEXT_BUDGET` | `150000` | input tokens (incl. cache read) before the context nudge |
+| `TOKEN_GUARD_METRICS_PATH` | `~/.local/share/opencode/token-guard-metrics.json` | where the firing counters are persisted |
 
 ## What it deliberately does not do
 

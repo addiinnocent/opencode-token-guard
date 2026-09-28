@@ -1,5 +1,6 @@
 import type { Plugin } from '@opencode-ai/plugin';
 export * from './guard.js';
+export * from './metrics.js';
 /**
  * Guards long agent sessions against token burn. Every provider step re-reads
  * the full (cached) conversation, so the plugin attacks step count and context

@@ -1,5 +1,7 @@
 import { Guard, classifyBash, optionsFromEnv } from './guard.js';
+import { bumpMetrics } from './metrics.js';
 export * from './guard.js';
+export * from './metrics.js';
 /**
  * Guards long agent sessions against token burn. Every provider step re-reads
  * the full (cached) conversation, so the plugin attacks step count and context
@@ -14,15 +16,18 @@ export * from './guard.js';
 const TokenGuard = async ({ client }) => {
     const guard = new Guard(optionsFromEnv());
     const seenMessages = new Set();
-    const notify = async (message) => {
+    const notify = async (kind, message) => {
+        await bumpMetrics(kind);
         await client.app.log({ body: { service: 'token-guard', level: 'warn', message } }).catch(() => { });
     };
     return {
         'tool.execute.before': async (input, output) => {
             if (input.tool === 'bash' && typeof output.args.command === 'string') {
                 const decision = guard.onBashBefore(output.args.command);
-                if (!decision.allow)
+                if (!decision.allow) {
+                    await bumpMetrics('blockedBashStreaks');
                     throw new Error(decision.reason);
+                }
             }
             if (input.tool === 'edit' || input.tool === 'write')
                 guard.onEdit();
@@ -32,7 +37,7 @@ const TokenGuard = async ({ client }) => {
                 if (classifyBash(input.args.command) === 'verify') {
                     const nudge = guard.onVerifyAfter(input.args.command);
                     if (nudge)
-                        await notify(nudge);
+                        await notify('verifyChurn', nudge);
                 }
             }
         },
@@ -47,13 +52,13 @@ const TokenGuard = async ({ client }) => {
             seenMessages.add(info.id);
             const stepNudge = guard.onAssistantStep();
             if (stepNudge)
-                await notify(stepNudge);
+                await notify('stepBudget', stepNudge);
             const ctx = (info.tokens?.input ?? 0) +
                 (info.tokens?.cacheRead ?? 0) +
                 (info.tokens?.cacheWrite ?? 0);
             const ctxNudge = guard.onContextSize(ctx);
             if (ctxNudge)
-                await notify(ctxNudge);
+                await notify('contextBudget', ctxNudge);
         },
     };
 };
