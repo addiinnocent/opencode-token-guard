@@ -1,10 +1,5 @@
 # opencode-token-guard
 
-Mirror of the [`feat/opencode-token-guard`](https://github.com/performance-dudes/ai-plugins/pull/57)
-branch from [performance-dudes/ai-plugins](https://github.com/performance-dudes/ai-plugins) —
-the plugin source lives at [`plugins/opencode/opencode-token-guard/`](plugins/opencode/opencode-token-guard/)
-in this tree. Upstream is authoritative; this copy exists to publish the plugin.
-
 An [opencode](https://opencode.ai) plugin that guards long agent sessions against
 **token burn**:
 
