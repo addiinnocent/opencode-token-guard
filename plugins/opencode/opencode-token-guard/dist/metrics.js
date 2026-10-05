@@ -7,6 +7,8 @@ const EMPTY = {
     contextBudget: 0,
     verifyChurn: 0,
     blockedBashStreaks: 0,
+    blockedOutsideMutation: 0,
+    offloadAsk: 0,
     total: 0,
     sessions: 0,
     firstFiring: null,

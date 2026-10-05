@@ -8,7 +8,9 @@ export * from './metrics.js';
  *
  * - blocks streaks of single-purpose bash calls (chain/batch instead),
  * - nudges when verification runs happen after too few edits,
- * - nudges at a step budget and a context-size budget per session.
+ * - nudges at a step budget and a context-size budget per session,
+ * - blocks bash mutations outside the project root and warns when the
+ *   assistant tries to offload in-project work onto the user.
  *
  * Thresholds are configurable via TOKEN_GUARD_* environment variables.
  */

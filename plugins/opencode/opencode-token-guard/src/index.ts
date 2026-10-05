@@ -1,5 +1,13 @@
 import type { Plugin } from '@opencode-ai/plugin'
-import { Guard, classifyBash, optionsFromEnv } from './guard.js'
+import {
+  Guard,
+  classifyBash,
+  isOffloadAsk,
+  mutatesOutsideProject,
+  OFFLOAD_MESSAGE,
+  optionsFromEnv,
+  outsideMutationReason,
+} from './guard.js'
 import { bumpMetrics, type FiringKind } from './metrics.js'
 
 export * from './guard.js'
@@ -28,13 +36,17 @@ interface MessageInfo {
  *
  * - blocks streaks of single-purpose bash calls (chain/batch instead),
  * - nudges when verification runs happen after too few edits,
- * - nudges at a step budget and a context-size budget per session.
+ * - nudges at a step budget and a context-size budget per session,
+ * - blocks bash mutations outside the project root and warns when the
+ *   assistant tries to offload in-project work onto the user.
  *
  * Thresholds are configurable via TOKEN_GUARD_* environment variables.
  */
-const TokenGuard: Plugin = async ({ client }) => {
+const TokenGuard: Plugin = async ({ client, directory }) => {
   const guard = new Guard(optionsFromEnv())
   const seenMessages = new Set<string>()
+  // messageID -> partID -> latest text of streamed assistant text parts.
+  const textParts = new Map<string, Map<string, string>>()
 
   const notify = async (kind: FiringKind, message: string) => {
     await bumpMetrics(kind)
@@ -44,6 +56,10 @@ const TokenGuard: Plugin = async ({ client }) => {
   return {
     'tool.execute.before': async (input: ToolInput, output: { args: ToolArgs }) => {
       if (input.tool === 'bash' && typeof output.args.command === 'string') {
+        if (mutatesOutsideProject(output.args.command, directory)) {
+          await bumpMetrics('blockedOutsideMutation')
+          throw new Error(outsideMutationReason(directory))
+        }
         const decision = guard.onBashBefore(output.args.command)
         if (!decision.allow) {
           await bumpMetrics('blockedBashStreaks')
@@ -63,10 +79,39 @@ const TokenGuard: Plugin = async ({ client }) => {
     },
 
     event: async ({ event }: { event: { type: string; properties?: unknown } }) => {
+      if (event.type === 'message.part.updated') {
+        const props = (event.properties as
+          | { info?: { type?: string; text?: unknown; messageID?: string }; partID?: string }
+          | undefined) ?? {}
+        const part = props.info
+        if (
+          part?.type === 'text' &&
+          typeof part.text === 'string' &&
+          part.messageID &&
+          props.partID
+        ) {
+          let parts = textParts.get(part.messageID)
+          if (!parts) {
+            parts = new Map()
+            textParts.set(part.messageID, parts)
+          }
+          parts.set(props.partID, part.text)
+        }
+        return
+      }
       if (event.type !== 'message.updated') return
       const info = (event.properties as { info?: MessageInfo } | undefined)?.info
-      if (!info || info.role !== 'assistant' || !info.id) return
-      if (seenMessages.has(info.id)) return
+      if (!info || !info.id || seenMessages.has(info.id)) return
+
+      // The message is complete: scan its accumulated text before anything else.
+      const parts = textParts.get(info.id)
+      if (parts) {
+        textParts.delete(info.id)
+        if (info.role === 'assistant' && isOffloadAsk([...parts.values()].join('\n'))) {
+          await notify('offloadAsk', OFFLOAD_MESSAGE)
+        }
+      }
+      if (info.role !== 'assistant') return
       seenMessages.add(info.id)
 
       const stepNudge = guard.onAssistantStep()
