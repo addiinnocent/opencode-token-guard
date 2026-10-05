@@ -3,13 +3,21 @@ import { randomUUID } from 'node:crypto'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 
-export type FiringKind = 'stepBudget' | 'contextBudget' | 'verifyChurn' | 'blockedBashStreaks'
+export type FiringKind =
+  | 'stepBudget'
+  | 'contextBudget'
+  | 'verifyChurn'
+  | 'blockedBashStreaks'
+  | 'blockedOutsideMutation'
+  | 'offloadAsk'
 
 export interface GuardMetrics {
   stepBudget: number
   contextBudget: number
   verifyChurn: number
   blockedBashStreaks: number
+  blockedOutsideMutation: number
+  offloadAsk: number
   total: number
   sessions: number
   firstFiring: string | null
@@ -22,6 +30,8 @@ const EMPTY: GuardMetrics = {
   contextBudget: 0,
   verifyChurn: 0,
   blockedBashStreaks: 0,
+  blockedOutsideMutation: 0,
+  offloadAsk: 0,
   total: 0,
   sessions: 0,
   firstFiring: null,

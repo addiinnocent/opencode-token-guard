@@ -13,7 +13,7 @@ One JSON object, bumped on every firing:
 cat ~/.local/share/opencode/token-guard-metrics.json
 ```
 
-Fields: `stepBudget` / `contextBudget` / `verifyChurn` / `blockedBashStreaks` (counts per
+Fields: `stepBudget` / `contextBudget` / `verifyChurn` / `blockedBashStreaks` / `blockedOutsideMutation` / `offloadAsk` (counts per
 kind), `total`, `sessions` (distinct plugin instances that fired), `firstFiring` /
 `lastFiring`. The file was seeded from the logs on 2026-09-28, so it reads all-time.
 
@@ -26,11 +26,13 @@ file contains null bytes):
 rg -a --no-filename 'level=WARN run=\S+ message="token-guard: ' ~/.local/share/opencode/log/opencode.log
 ```
 
-Classify each line by its message prefix into four kinds:
+Classify each line by its message prefix into six kinds:
 - `provider steps` — step-budget nudge (capture the step count and the `run=<id>`)
 - `context` — context-size nudge
 - `verification ran after only` — verify-churn nudge (capture the edit count)
 - `consecutive single-purpose` — a blocked bash streak (the block itself)
+- `mutates state outside the project root` — an outside-mutation block
+- `asked the user to run/do work outside` — an offload-ask warning
 
 ## 2. Report
 
@@ -42,6 +44,8 @@ token-guard — all-time (since <first firing date>)
   context-budget nudges:   N
   verify-churn nudges:     N
   blocked bash streaks:    N
+  outside-mutation blocks: N
+  offload asks:            N
   total firings:           N
 
 Thresholds: step budget <n>, context budget <n> tokens, min edits/verify <n>,

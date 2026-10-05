@@ -47,4 +47,15 @@ export declare class Guard {
     /** Call with the latest context size; returns a one-shot nudge at the budget. */
     onContextSize(inputTokens: number): string | null;
 }
+/**
+ * True when a bash command clearly mutates filesystem state OUTSIDE the
+ * project root: an outside redirect target, an outside path as operand of a
+ * mutating command, or a `cd` outside combined with any write hint. Reads
+ * from outside are not flagged; deliberately conservative both ways — this
+ * is a tripwire the model sees and can react to, not a sandbox.
+ */
+export declare function mutatesOutsideProject(command: string, projectRoot: string, home?: string): boolean;
+export declare function outsideMutationReason(projectRoot: string): string;
+export declare function isOffloadAsk(text: string): boolean;
+export declare const OFFLOAD_MESSAGE: string;
 export declare function optionsFromEnv(env?: NodeJS.ProcessEnv): TokenGuardOptions;

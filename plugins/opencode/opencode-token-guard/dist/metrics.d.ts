@@ -1,9 +1,11 @@
-export type FiringKind = 'stepBudget' | 'contextBudget' | 'verifyChurn' | 'blockedBashStreaks';
+export type FiringKind = 'stepBudget' | 'contextBudget' | 'verifyChurn' | 'blockedBashStreaks' | 'blockedOutsideMutation' | 'offloadAsk';
 export interface GuardMetrics {
     stepBudget: number;
     contextBudget: number;
     verifyChurn: number;
     blockedBashStreaks: number;
+    blockedOutsideMutation: number;
+    offloadAsk: number;
     total: number;
     sessions: number;
     firstFiring: string | null;

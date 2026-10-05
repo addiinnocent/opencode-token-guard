@@ -27,6 +27,15 @@ and context size.
 | Verify throttle | Warns when a test/lint/typecheck run happens after fewer than N edit/write operations since the last run. | N = **3** |
 | Step budget | One-time warning when the session exceeds N assistant messages. | N = **200** |
 | Context budget | One-time warning when the conversation exceeds N input tokens (incl. cache read). | N = **150,000** |
+| Outside-mutation block | Blocks bash commands that mutate filesystem state outside the project root (outside redirect targets, outside operands of `mkdir`/`touch`/`rm`/`tee`/`ln`/`sed -i`, or `cd` outside combined with a write hint). Reads from outside and `/tmp`-style scratch stay allowed. | always on |
+| Offload-ask warning | Warns when the assistant asks the user to run/do the work themselves or outside the project ("run this yourself", "in your terminal", "führe das selbst aus", "außerhalb des Projekts", …). | always on |
+
+The last two guards attack a specific wrong turn: after a permission prompt for an
+in-project action, agents sometimes relocate the work outside the project folder or
+offload it onto the user. The block reason and the warning both tell the model the
+correct recovery: redo the change in-project with the edit/write tools, and if a
+permission prompt blocked an in-project action, narrow the command — never hand
+the work to the user.
 
 Warnings are written to the opencode log (`client.app.log`, service
 `token-guard`). Blocks surface as tool errors the model sees and can react to.
@@ -43,7 +52,9 @@ Every firing is also counted into a small JSON file,
   "contextBudget": 0,
   "verifyChurn": 8,
   "blockedBashStreaks": 0,
-  "total": 56,
+  "blockedOutsideMutation": 1,
+  "offloadAsk": 2,
+  "total": 59,
   "sessions": 48,
   "firstFiring": "2026-08-28T10:54:30.526Z",
   "lastFiring": "2026-09-28T12:51:47.028Z"
