@@ -139,14 +139,18 @@ const WRITE_HINT_RE =
 const HEREDOC_WRITE_RE =
   /<<-?\s*['"]?[A-Za-z_]+['"]?[\s\S]*?(?:open\s*\([^)]*['"][wa]['"]|json\.dump|yaml\.dump|\.write\s*\(|writeFileSync)/
 
-/** Extract absolute-ish path candidates from a shell segment. */
-const PATH_TOKEN_RE = /(?:~|\$HOME)(?:\/[^\s'"&|;]*)?|\/(?:[A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]*/g
+/** Extract absolute-ish path candidates from a shell segment. The absolute
+ *  alternative must start at a token boundary (`start`, whitespace, `=`, or
+ *  an opening quote) so fragments inside relative paths like
+ *  `client/src/foo.ts` are not mistaken for `/src/foo.ts`. */
+const PATH_TOKEN_RE = /(?:~|\$HOME)(?:\/[^\s'"&|;]*)?|(?<=^|[\s='"`])(?:\/(?:[A-Za-z0-9._-]+\/)+[A-Za-z0-9._-]*)/g
 
 function isOutside(target: string, projectRoot: string, home: string): boolean {
   const p = target.replace(/^~(?=\/)/, home).replace(/^\$HOME(?=\/)/, home)
   if (!p.startsWith('/')) return false
   if (OUTSIDE_ALLOW.some((re) => re.test(p))) return false
   const root = projectRoot.replace(/\/+$/, '')
+  if (!root) return false // projectRoot is "/" — everything is inside
   return p !== root && !p.startsWith(root + '/')
 }
 
